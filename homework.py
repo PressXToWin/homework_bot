@@ -59,22 +59,25 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
 
-    ...
+    check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
 
-    ...
-
     while True:
         try:
-
-            ...
+            response = get_api_answer(timestamp)
+            homework, timestamp = check_response(response)
+            if homework:
+                message = parse_status(homework)
+                send_message(bot, message)
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            ...
-        ...
+            send_message(bot, message)
+
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
