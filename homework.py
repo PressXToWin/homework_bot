@@ -2,6 +2,7 @@ from os import getenv
 from dotenv import load_dotenv
 import telegram
 import time
+import requests
 
 load_dotenv()
 
@@ -32,15 +33,25 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    ...
+    payload = {'from_date': timestamp}
+    response = requests.get(url=ENDPOINT, headers=HEADERS, params=payload)
+    return response.json()
 
 
 def check_response(response):
-    ...
+    timestamp = response['current_date']
+    homeworks = response['homeworks']
+    if len(homeworks) == 0:
+        homework = None
+    else:
+        homework = homeworks[0]
+    return homework, timestamp
 
 
 def parse_status(homework):
-    ...
+    homework_name = homework['homework_name']
+    homework_status = homework['status']
+    verdict = HOMEWORK_VERDICTS[homework_status]
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
