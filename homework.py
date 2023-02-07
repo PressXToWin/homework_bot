@@ -10,9 +10,14 @@ from exceptions import RequestError, WrongStatusCode
 
 from logging import StreamHandler
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] %(message)s'
+)
 handler = StreamHandler(stream=sys.stdout)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 load_dotenv()
 
@@ -20,7 +25,7 @@ PRACTICUM_TOKEN = getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = getenv('TELEGRAM_CHAT_ID')
 
-RETRY_PERIOD = 600
+RETRY_PERIOD = 10
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -34,8 +39,10 @@ HOMEWORK_VERDICTS = {
 def check_tokens():
     """Проверка наличия всех необходимых токенов"""
     if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.critical('Необходимый токен не найден.')
+        logger.critical('Необходимый токен не найден.')
         raise NameError('Необходимый токен не найден.')
+    else:
+        logger.debug('Все токены на месте')
 
 
 def send_message(bot, message):
@@ -51,6 +58,7 @@ def send_message(bot, message):
 def get_api_answer(timestamp):
     """Запрашиваем информацию от API Практикума"""
     payload = {'from_date': timestamp}
+    logger.debug('Запрашиваем информацию по API')
     try:
         response = requests.get(url=ENDPOINT, headers=HEADERS, params=payload)
     except requests.RequestException:
@@ -67,6 +75,7 @@ def get_api_answer(timestamp):
 
 def check_response(response):
     """Проверяем ответ от API Практикума"""
+    logger.debug('Проверяем ответ')
     try:
         timestamp = response['current_date']
         homeworks = response['homeworks']
@@ -85,6 +94,7 @@ def check_response(response):
 
 def parse_status(homework):
     """Парсим статус домашней работы"""
+    logger.debug('Парсим статус')
     try:
         homework_name = homework['homework_name']
         homework_status = homework['status']
@@ -104,6 +114,7 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
 
+    logger.debug('Бот запущен')
     check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
