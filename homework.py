@@ -1,14 +1,15 @@
-from os import getenv
-from dotenv import load_dotenv
-import telegram
-import time
-import requests
 import logging
 import sys
+import time
 from http import HTTPStatus
-from exceptions import RequestError, WrongStatusCode
-
 from logging import StreamHandler
+from os import getenv
+
+import requests
+import telegram
+from dotenv import load_dotenv
+
+from exceptions import RequestError, WrongStatusCode
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -25,7 +26,7 @@ PRACTICUM_TOKEN = getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = getenv('TELEGRAM_CHAT_ID')
 
-RETRY_PERIOD = 10
+RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -37,7 +38,7 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
-    """Проверка наличия всех необходимых токенов"""
+    """Проверка наличия всех необходимых токенов."""
     if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         logger.critical('Необходимый токен не найден.')
         raise NameError('Необходимый токен не найден.')
@@ -46,7 +47,7 @@ def check_tokens():
 
 
 def send_message(bot, message):
-    """Отправка сообщения в Telegram"""
+    """Отправка сообщения в Telegram."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception:
@@ -56,7 +57,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """Запрашиваем информацию от API Практикума"""
+    """Запрашиваем информацию от API Практикума."""
     payload = {'from_date': timestamp}
     logger.debug('Запрашиваем информацию по API')
     try:
@@ -66,15 +67,17 @@ def get_api_answer(timestamp):
         raise RequestError('Ошибка запроса к API Практикума')
     else:
         if response.status_code != HTTPStatus.OK:
-            logger.error(f'Ошибка {response.status_code} при получении ответа от API Практикума')
-            raise WrongStatusCode(f'Ошибка {response.status_code} при получении ответа от API Практикума')
+            logger.error(f'Ошибка {response.status_code} '
+                         f'при получении ответа от API Практикума')
+            raise WrongStatusCode(f'Ошибка {response.status_code} '
+                                  f'при получении ответа от API Практикума')
         else:
             logger.debug('Ответ от API получен')
             return response.json()
 
 
 def check_response(response):
-    """Проверяем ответ от API Практикума"""
+    """Проверяем ответ от API Практикума."""
     logger.debug('Проверяем ответ')
     try:
         timestamp = response['current_date']
@@ -88,12 +91,14 @@ def check_response(response):
             last_homework = homeworks[0]
         return last_homework, timestamp
     except KeyError as error:
-        logger.error(f'Содержание ответа от API не соответствует ожидаемому, {error}')
-        raise KeyError(f'Содержание ответа от API не соответствует ожидаемому, {error}')
+        logger.error(f'Содержание ответа от API не '
+                     f'соответствует ожидаемому, {error}')
+        raise KeyError(f'Содержание ответа от API не '
+                       f'соответствует ожидаемому, {error}')
 
 
 def parse_status(homework):
-    """Парсим статус домашней работы"""
+    """Парсим статус домашней работы."""
     logger.debug('Парсим статус')
     try:
         homework_name = homework['homework_name']
@@ -105,15 +110,17 @@ def parse_status(homework):
         try:
             verdict = HOMEWORK_VERDICTS[homework_status]
         except KeyError:
-            logger.error(f'Hеожиданный статус домашней работы, {homework_status}')
-            raise KeyError(f'Hеожиданный статус домашней работы, {homework_status}')
+            logger.error(f'Hеожиданный статус домашней '
+                         f'работы, {homework_status}')
+            raise KeyError(f'Hеожиданный статус домашней '
+                           f'работы, {homework_status}')
         else:
-            return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+            return (f'Изменился статус проверки '
+                    f'работы "{homework_name}". {verdict}')
 
 
 def main():
     """Основная логика работы бота."""
-
     logger.debug('Бот запущен')
     check_tokens()
 
