@@ -1,11 +1,14 @@
-...
+from os import getenv
+from dotenv import load_dotenv
+import telegram
+import time
 
 load_dotenv()
 
 
-PRACTICUM_TOKEN = ...
-TELEGRAM_TOKEN = ...
-TELEGRAM_CHAT_ID = ...
+PRACTICUM_TOKEN = getenv('PRACTICUM_TOKEN')
+TELEGRAM_TOKEN = getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = getenv('TELEGRAM_CHAT_ID')
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -20,11 +23,12 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
-    ...
+    if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        raise NameError('Необходимый токен не найден.')
 
 
 def send_message(bot, message):
-    ...
+    bot.send_message(TELEGRAM_CHAT_ID, message)
 
 
 def get_api_answer(timestamp):
