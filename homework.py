@@ -31,12 +31,14 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
+    """TODO: сделать докстринг. Формально докстринг есть"""
     if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         logging.critical('Необходимый токен не найден.')
         raise NameError('Необходимый токен не найден.')
 
 
 def send_message(bot, message):
+    """TODO: сделать докстринг. Формально докстринг есть"""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception:
@@ -46,19 +48,28 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
+    """TODO: сделать докстринг. Формально докстринг есть"""
     payload = {'from_date': timestamp}
-    response = requests.get(url=ENDPOINT, headers=HEADERS, params=payload)
-    if response.status_code != HTTPStatus.OK:
-        logger.error('Ошибка получения ответа от эндпоинта')
+    try:
+        response = requests.get(url=ENDPOINT, headers=HEADERS, params=payload)
+    except requests.RequestException:
+        raise Exception
     else:
-        logger.debug('Ответ от API получен')
-    return response.json()
+        if response.status_code != 200:
+            logger.error('Ошибка получения ответа от эндпоинта')
+            raise Exception
+        else:
+            logger.debug('Ответ от API получен')
+        return response.json()
 
 
 def check_response(response):
+    """TODO: сделать докстринг. Формально докстринг есть"""
     try:
         timestamp = response['current_date']
         homeworks = response['homeworks']
+        if not isinstance(homeworks, list):
+            raise TypeError
         if len(homeworks) == 0:
             homework = None
         else:
@@ -66,16 +77,23 @@ def check_response(response):
         return homework, timestamp
     except KeyError:
         logger.error('Содержание ответа от API не соответствует ожидаемому')
+        raise KeyError
 
 
 def parse_status(homework):
-    homework_name = homework['homework_name']
-    homework_status = homework['status']
+    """TODO: сделать докстринг. Формально докстринг есть"""
     try:
-        verdict = HOMEWORK_VERDICTS[homework_status]
-    except Exception:
-        logger.error('Hеожиданный статус домашней работы')
-        verdict = homework_status
+        homework_name = homework['homework_name']
+        homework_status = homework['status']
+    except KeyError:
+        logger.error('Ключ не найден')
+    else:
+        try:
+            verdict = HOMEWORK_VERDICTS[homework_status]
+        except Exception:
+            logger.error('Hеожиданный статус домашней работы')
+            verdict = homework_status
+            raise Exception
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
