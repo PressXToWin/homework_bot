@@ -9,7 +9,7 @@ import requests
 import telegram
 from dotenv import load_dotenv
 
-from exceptions import RequestError, WrongStatusCode
+from exceptions import RequestError, WrongStatusCode, SendMessageError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -39,36 +39,34 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверка наличия всех необходимых токенов."""
-    if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.critical('Необходимый токен не найден.')
-        raise NameError('Необходимый токен не найден.')
-    else:
-        logger.debug('Все токены на месте')
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def send_message(bot, message):
     """Отправка сообщения в Telegram."""
     try:
+        logger.debug(f'Пытаемся отправить сообщение: {message}')
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception:
-        logger.error(f'Отправка сообщения не удалась: {message}')
+        raise SendMessageError(f'Отправка сообщения не удалась: {message}')
     else:
         logger.debug(f'Сообщение отправлено успешно: {message}')
 
 
 def get_api_answer(timestamp):
     """Запрашиваем информацию от API Практикума."""
-    payload = {'from_date': timestamp}
     logger.debug('Запрашиваем информацию по API')
+    kwargs = {
+        'url': ENDPOINT,
+        'headers': HEADERS,
+        'params': {'from_date': timestamp}
+    }
     try:
-        response = requests.get(url=ENDPOINT, headers=HEADERS, params=payload)
+        response = requests.get(**kwargs)
     except requests.RequestException:
-        logger.error('Ошибка запроса к API Практикума')
         raise RequestError('Ошибка запроса к API Практикума')
     else:
         if response.status_code != HTTPStatus.OK:
-            logger.error(f'Ошибка {response.status_code} '
-                         f'при получении ответа от API Практикума')
             raise WrongStatusCode(f'Ошибка {response.status_code} '
                                   f'при получении ответа от API Практикума')
         else:
@@ -79,53 +77,53 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Проверяем ответ от API Практикума."""
     logger.debug('Проверяем ответ')
-    try:
+    if not isinstance(response, dict):
+        raise TypeError('Ответ API не является словарём')
+    if 'current_date' in response and 'homeworks' in response:
         timestamp = response['current_date']
         homeworks = response['homeworks']
         if not isinstance(homeworks, list):
-            logger.error('В ответе API homeworks не является списком')
             raise TypeError('В ответе API homeworks не является списком')
         if len(homeworks) == 0:
             last_homework = None
         else:
             last_homework = homeworks[0]
         return last_homework, timestamp
-    except KeyError as error:
-        logger.error(f'Содержание ответа от API не '
-                     f'соответствует ожидаемому, {error}')
+    else:
         raise KeyError(f'Содержание ответа от API не '
-                       f'соответствует ожидаемому, {error}')
+                       f'соответствует ожидаемому.')
 
 
 def parse_status(homework):
     """Парсим статус домашней работы."""
     logger.debug('Парсим статус')
-    try:
+    if 'homework_name' in homework and 'status' in homework:
         homework_name = homework['homework_name']
         homework_status = homework['status']
-    except KeyError as error:
-        logger.error(f'Не найден необходимый ключ в ответе API, {error}')
-        raise KeyError(f'Не найден необходимый ключ в ответе API, {error}')
-    else:
         try:
             verdict = HOMEWORK_VERDICTS[homework_status]
         except KeyError:
-            logger.error(f'Hеожиданный статус домашней '
-                         f'работы, {homework_status}')
             raise KeyError(f'Hеожиданный статус домашней '
                            f'работы, {homework_status}')
         else:
             return (f'Изменился статус проверки '
                     f'работы "{homework_name}". {verdict}')
+    else:
+        raise KeyError(f'Не найден необходимый ключ в ответе API.')
 
 
 def main():
     """Основная логика работы бота."""
     logger.debug('Бот запущен')
-    check_tokens()
+    if check_tokens():
+        logger.debug('Все токены на месте')
+    else:
+        logger.critical('Необходимый токен не найден.')
+        sys.exit('Необходимый токен не найден.')
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
+    timestamp = 0
     last_error_message = ''
 
     while True:
@@ -139,8 +137,12 @@ def main():
                 logger.debug('Статус без изменений.')
             last_error_message = ''
 
+        except SendMessageError as error:
+            logger.error(error)
+
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
+            logger.error(error)
             if last_error_message != message:
                 send_message(bot, message)
                 last_error_message = message
