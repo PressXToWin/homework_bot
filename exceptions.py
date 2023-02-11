@@ -4,7 +4,3 @@ class RequestError(Exception):
 
 class WrongStatusCode(Exception):
     pass
-
-
-class SendMessageError(Exception):
-    pass

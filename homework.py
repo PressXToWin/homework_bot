@@ -9,7 +9,7 @@ import requests
 import telegram
 from dotenv import load_dotenv
 
-from exceptions import RequestError, WrongStatusCode, SendMessageError
+from exceptions import RequestError, WrongStatusCode
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -48,7 +48,7 @@ def send_message(bot, message):
         logger.debug(f'Пытаемся отправить сообщение: {message}')
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception:
-        raise SendMessageError(f'Отправка сообщения не удалась: {message}')
+        logger.error(f'Отправка сообщения не удалась: {message}')
     else:
         logger.debug(f'Сообщение отправлено успешно: {message}')
 
@@ -90,8 +90,8 @@ def check_response(response):
             last_homework = homeworks[0]
         return last_homework, timestamp
     else:
-        raise KeyError(f'Содержание ответа от API не '
-                       f'соответствует ожидаемому.')
+        raise KeyError('Содержание ответа от API не '
+                       'соответствует ожидаемому.')
 
 
 def parse_status(homework):
@@ -109,7 +109,7 @@ def parse_status(homework):
             return (f'Изменился статус проверки '
                     f'работы "{homework_name}". {verdict}')
     else:
-        raise KeyError(f'Не найден необходимый ключ в ответе API.')
+        raise KeyError('Не найден необходимый ключ в ответе API.')
 
 
 def main():
@@ -123,8 +123,7 @@ def main():
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    timestamp = 0
-    last_error_message = ''
+    last_message = ''
 
     while True:
         try:
@@ -132,20 +131,20 @@ def main():
             homework, timestamp = check_response(response)
             if homework:
                 message = parse_status(homework)
-                send_message(bot, message)
+                if last_message != message:
+                    send_message(bot, message)
+                    last_message = message
+                else:
+                    logger.debug('Сообщение не изменилось.')
             else:
                 logger.debug('Статус без изменений.')
-            last_error_message = ''
-
-        except SendMessageError as error:
-            logger.error(error)
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(error)
-            if last_error_message != message:
+            if last_message != message:
                 send_message(bot, message)
-                last_error_message = message
+                last_message = message
 
         finally:
             time.sleep(RETRY_PERIOD)
