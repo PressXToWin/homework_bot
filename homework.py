@@ -39,7 +39,8 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверка наличия всех необходимых токенов."""
-    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
+    tokens = (PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
+    return all(tokens)
 
 
 def send_message(bot, message):
@@ -68,7 +69,7 @@ def get_api_answer(timestamp):
     else:
         if response.status_code != HTTPStatus.OK:
             raise WrongStatusCode(f'Ошибка {response.status_code} '
-                                  f'при получении ответа от API Практикума')
+                                  'при получении ответа от API Практикума')
         else:
             logger.debug('Ответ от API получен')
             return response.json()
@@ -84,10 +85,7 @@ def check_response(response):
         homeworks = response['homeworks']
         if not isinstance(homeworks, list):
             raise TypeError('В ответе API homeworks не является списком')
-        if len(homeworks) == 0:
-            last_homework = None
-        else:
-            last_homework = homeworks[0]
+        last_homework = None if len(homeworks) == 0 else homeworks[0]
         return last_homework, timestamp
     else:
         raise KeyError('Содержание ответа от API не '
@@ -103,10 +101,10 @@ def parse_status(homework):
         try:
             verdict = HOMEWORK_VERDICTS[homework_status]
         except KeyError:
-            raise KeyError(f'Hеожиданный статус домашней '
+            raise KeyError('Hеожиданный статус домашней '
                            f'работы, {homework_status}')
         else:
-            return (f'Изменился статус проверки '
+            return ('Изменился статус проверки '
                     f'работы "{homework_name}". {verdict}')
     else:
         raise KeyError('Не найден необходимый ключ в ответе API.')
@@ -115,12 +113,9 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     logger.debug('Бот запущен')
-    if check_tokens():
-        logger.debug('Все токены на месте')
-    else:
+    if not check_tokens():
         logger.critical('Необходимый токен не найден.')
         sys.exit('Необходимый токен не найден, завершение работы')
-
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_message = ''
