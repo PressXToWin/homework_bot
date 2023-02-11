@@ -119,7 +119,7 @@ def main():
         logger.debug('Все токены на месте')
     else:
         logger.critical('Необходимый токен не найден.')
-        sys.exit('Необходимый токен не найден.')
+        sys.exit('Необходимый токен не найден, завершение работы')
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
